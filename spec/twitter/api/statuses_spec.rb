@@ -53,6 +53,46 @@ describe Twitter::API do
       expect(tweets.first).to be_a Twitter::Tweet
       expect(tweets.first.text).to eq "The problem with your code is that it's doing exactly what you told it to do."
     end
+    context "already favorited" do
+      before do
+        stub_post("/1.1/favorites/create.json").with(:body => {:id => "25938088801"}).to_return(:status => 403, :body => fixture("already_favorited.json"), :headers => {:content_type => "application/json; charset=utf-8"})
+      end
+      it "does not raises an error" do
+        expect{@client.favorite(25938088801)}.not_to raise_error
+      end
+    end
+  end
+
+  describe "#favorite!" do
+    before do
+      stub_post("/1.1/favorites/create.json").with(:body => {:id => "25938088801"}).to_return(:body => fixture("status.json"), :headers => {:content_type => "application/json; charset=utf-8"})
+    end
+    it "requests the correct resource" do
+      @client.favorite!(25938088801)
+      expect(a_post("/1.1/favorites/create.json").with(:body => {:id => "25938088801"})).to have_been_made
+    end
+    it "returns an array of favorited Tweets" do
+      tweets = @client.favorite!(25938088801)
+      expect(tweets).to be_an Array
+      expect(tweets.first).to be_a Twitter::Tweet
+      expect(tweets.first.text).to eq "The problem with your code is that it's doing exactly what you told it to do."
+    end
+    context "forbidden" do
+      before do
+        stub_post("/1.1/favorites/create.json").with(:body => {:id => "25938088801"}).to_return(:status => 403, :headers => {:content_type => "application/json; charset=utf-8"})
+      end
+      it "raises a Forbidden error" do
+        expect{@client.favorite!(25938088801)}.to raise_error(Twitter::Error::Forbidden)
+      end
+    end
+    context "already favorited" do
+      before do
+        stub_post("/1.1/favorites/create.json").with(:body => {:id => "25938088801"}).to_return(:status => 403, :body => fixture("already_favorited.json"), :headers => {:content_type => "application/json; charset=utf-8"})
+      end
+      it "raises an AlreadyFavorited error" do
+        expect{@client.favorite!(25938088801)}.to raise_error(Twitter::Error::AlreadyFavorited, "Tweet with the ID 25938088801 has already been favorited by the authenticated user.")
+      end
+    end
   end
 
   describe "#unfavorite" do
@@ -159,19 +199,17 @@ describe Twitter::API do
 
   describe "#retweets_of_me" do
     before do
-      stub_get("/1.1/statuses/user_timeline.json").with(:query => {:include_rts => "false", :count => "200"}).to_return(:body => fixture("statuses.json"), :headers => {:content_type => "application/json; charset=utf-8"})
-      stub_get("/1.1/statuses/user_timeline.json").with(:query => {:include_rts => "false", :count => "200", :max_id => "244102490646278145"}).to_return(:body => fixture("statuses.json"), :headers => {:content_type => "application/json; charset=utf-8"})
+      stub_get("/1.1/statuses/retweets_of_me.json").to_return(:body => fixture("statuses.json"), :headers => {:content_type => "application/json; charset=utf-8"})
     end
     it "requests the correct resource" do
       @client.retweets_of_me
-      expect(a_get("/1.1/statuses/user_timeline.json").with(:query => {:include_rts => "false", :count => "200"})).to have_been_made
-      expect(a_get("/1.1/statuses/user_timeline.json").with(:query => {:include_rts => "false", :count => "200", :max_id => "244102490646278145"})).to have_been_made
+      expect(a_get("/1.1/statuses/retweets_of_me.json")).to have_been_made
     end
     it "returns the 20 most recent tweets of the authenticated user that have been retweeted by others" do
       tweets = @client.retweets_of_me
       expect(tweets).to be_an Array
       expect(tweets.first).to be_a Twitter::Tweet
-      expect(tweets.first.text).to eq "RT @olivercameron: Mosaic looks cool: http://t.co/A8013C9k"
+      expect(tweets.first.text).to eq "Happy Birthday @imdane. Watch out for those @rally pranksters!"
     end
   end
 
@@ -370,6 +408,48 @@ describe Twitter::API do
       expect(tweets.first.text).to eq "As for the Series, I'm for the Giants. Fuck Texas, fuck Nolan Ryan, fuck George Bush."
       expect(tweets.first.retweeted_tweet.text).to eq "RT @gruber: As for the Series, I'm for the Giants. Fuck Texas, fuck Nolan Ryan, fuck George Bush."
       expect(tweets.first.retweeted_tweet.id).not_to eq tweets.first.id
+    end
+    context "already retweeted" do
+      before do
+        stub_post("/1.1/statuses/retweet/28561922516.json").to_return(:status => 403, :body => fixture("already_retweeted.json"), :headers => {:content_type => "application/json; charset=utf-8"})
+      end
+      it "does not raise an error" do
+        expect{@client.retweet(28561922516)}.not_to raise_error
+      end
+    end
+  end
+
+  describe "#retweet!" do
+    before do
+      stub_post("/1.1/statuses/retweet/28561922516.json").to_return(:body => fixture("retweet.json"), :headers => {:content_type => "application/json; charset=utf-8"})
+    end
+    it "requests the correct resource" do
+      @client.retweet!(28561922516)
+      expect(a_post("/1.1/statuses/retweet/28561922516.json")).to have_been_made
+    end
+    it "returns an array of Tweets with retweet details embedded" do
+      tweets = @client.retweet!(28561922516)
+      expect(tweets).to be_an Array
+      expect(tweets.first).to be_a Twitter::Tweet
+      expect(tweets.first.text).to eq "As for the Series, I'm for the Giants. Fuck Texas, fuck Nolan Ryan, fuck George Bush."
+      expect(tweets.first.retweeted_tweet.text).to eq "RT @gruber: As for the Series, I'm for the Giants. Fuck Texas, fuck Nolan Ryan, fuck George Bush."
+      expect(tweets.first.retweeted_tweet.id).not_to eq tweets.first.id
+    end
+    context "fobidden" do
+      before do
+        stub_post("/1.1/statuses/retweet/28561922516.json").to_return(:status => 403, :headers => {:content_type => "application/json; charset=utf-8"})
+      end
+      it "raises a Forbidden error" do
+        expect{@client.retweet!(28561922516)}.to raise_error(Twitter::Error::Forbidden)
+      end
+    end
+    context "already retweeted" do
+      before do
+        stub_post("/1.1/statuses/retweet/28561922516.json").to_return(:status => 403, :body => fixture("already_retweeted.json"), :headers => {:content_type => "application/json; charset=utf-8"})
+      end
+      it "raises an AlreadyRetweeted error" do
+        expect{@client.retweet!(28561922516)}.to raise_error(Twitter::Error::AlreadyRetweeted, "Tweet with the ID 28561922516 has already been retweeted by the authenticated user.")
+      end
     end
   end
 

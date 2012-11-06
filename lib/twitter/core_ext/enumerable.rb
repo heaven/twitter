@@ -1,10 +1,10 @@
 module Enumerable
 
   def threaded_map
-    abort_on_exception do
+    twitter_abort_on_exception do
       threads = []
       each do |object|
-        threads << Thread.new { yield object }
+        threads << Thread.new { twitter_handle_exception(threads) { yield object } }
       end
       threads.map(&:value)
     end
@@ -12,12 +12,19 @@ module Enumerable
 
   private
 
-  def abort_on_exception
+  def twitter_abort_on_exception
     initial_abort_on_exception = Thread.abort_on_exception
     Thread.abort_on_exception = false
     value = yield
     Thread.abort_on_exception = initial_abort_on_exception
     value
+  end
+
+  def twitter_handle_exception(threads, &block)
+    yield
+  rescue => e
+    threads.find_all { |t| t != Thread.current }.map(&:kill)
+    raise e
   end
 
 end

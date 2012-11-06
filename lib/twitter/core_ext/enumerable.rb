@@ -14,7 +14,7 @@ module Enumerable
 
   def abort_on_exception
     initial_abort_on_exception = Thread.abort_on_exception
-    Thread.abort_on_exception ||= true
+    Thread.abort_on_exception = false
     value = yield
     Thread.abort_on_exception = initial_abort_on_exception
     value
